@@ -474,7 +474,7 @@ function initAudio(){
   if(audioCtx)return;
   try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
 }
-function resumeAudio(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}
+function resumeAudio(){if(audioCtx&&audioCtx.state==='suspended')return audioCtx.resume();return Promise.resolve();}
 function unlockAudio(){
   initAudio();resumeAudio();
   if(!audioCtx)return;
@@ -535,24 +535,26 @@ function p2m(phrase){return phrase.trim().split(' ').map(w2m).join(' / ');}
 
 function playCode(code,w,farn,flash,done){
   if(flashTimer){clearInterval(flashTimer);flashTimer=null;}
-  resumeAudio();
-  var td=calcTimings(code,w,farn);
+  initAudio();
   var fl=document.getElementById('flasher');
   var pi=document.getElementById('playInd');
   if(pi)pi.className='playing ON';
-  for(var i=0;i<td.arr.length;i++){beep(td.arr[i].t/1000,td.arr[i].d/1000);}
-  if(flash){
-    var idx=0,active=false,elapsed=0;
-    flashTimer=setInterval(function(){
-      if(idx>=td.arr.length){clearInterval(flashTimer);flashTimer=null;if(fl)fl.classList.remove('ON');if(pi)pi.className='playing';if(done)done();return;}
-      var tt=td.arr[idx].t,dd=td.arr[idx].d;
-      if(elapsed>=tt&&!active){if(fl)fl.classList.add('ON');active=true;}
-      if(active&&elapsed>=tt+dd){if(fl)fl.classList.remove('ON');active=false;idx++;}
-      elapsed+=20;
-    },20);
-  }else{
-    setTimeout(function(){if(pi)pi.className='playing';if(done)done();},td.total+200);
-  }
+  resumeAudio().then(function(){
+    var td=calcTimings(code,w,farn);
+    for(var i=0;i<td.arr.length;i++){beep(td.arr[i].t/1000,td.arr[i].d/1000);}
+    if(flash){
+      var idx=0,active=false,elapsed=0;
+      flashTimer=setInterval(function(){
+        if(idx>=td.arr.length){clearInterval(flashTimer);flashTimer=null;if(fl)fl.classList.remove('ON');if(pi)pi.className='playing';if(done)done();return;}
+        var tt=td.arr[idx].t,dd=td.arr[idx].d;
+        if(elapsed>=tt&&!active){if(fl)fl.classList.add('ON');active=true;}
+        if(active&&elapsed>=tt+dd){if(fl)fl.classList.remove('ON');active=false;idx++;}
+        elapsed+=20;
+      },20);
+    }else{
+      setTimeout(function(){if(pi)pi.className='playing';if(done)done();},td.total+200);
+    }
+  });
 }
 
 /* ════════════════════════ RENDER MORSE ════════════════════════ */
@@ -771,10 +773,12 @@ function pressStart(e){
   cancelAutoSub(); /* cancel pending submit — user is still sending */
   if(pressed)return;pressed=true;pressT=Date.now();
   var pad=document.getElementById('sendPad');if(pad)pad.classList.add('PR');
-  resumeAudio();
-  if(audioCtx){
-    try{var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=700;o.type='sine';g.gain.setValueAtTime(0.3,audioCtx.currentTime);o.start();window._sndOsc=o;}catch(er){}
-  }
+  initAudio();
+  resumeAudio().then(function(){
+    if(audioCtx){
+      try{var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=700;o.type='sine';g.gain.setValueAtTime(0.3,audioCtx.currentTime);o.start();window._sndOsc=o;}catch(er){}
+    }
+  });
   timerIv=setInterval(function(){
     var pct=Math.min((Date.now()-pressT)/300*100,100);
     var f=document.getElementById('tFil');
@@ -1071,6 +1075,10 @@ function boot(){
   buildRef();
   buildCats();
   buildGrid();
+  /* iOS suspends AudioContext between interactions — resume on any touch */
+  document.addEventListener('touchstart',function(){
+    if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+  },{passive:true,capture:true});
 }
 </script>
 </body>
