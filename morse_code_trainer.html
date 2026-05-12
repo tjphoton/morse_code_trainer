@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Morse Training Station</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+:root{
+  --bg:#0d1117;--bg2:#161b27;--bg3:#1e2538;--card:#1a2035;--bdr:#2a3558;
+  --txt:#eef0f8;--mut:#8892b0;--acc:#38bdf8;--dot:#38bdf8;--dsh:#fb7185;
+  --grn:#4ade80;--red:#f87171;--gld:#fbbf24;
+  --f:'Courier New',Courier,monospace;
+}
+.LT{--bg:#f0f4ff;--bg2:#e2e9f8;--bg3:#d0d9f0;--card:#fff;--bdr:#a0b0d8;--txt:#111827;--mut:#4b5680;--acc:#1d6fbf;--dot:#1d6fbf;--dsh:#c0392b;--grn:#16a34a;--red:#dc2626;--gld:#d97706}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--f)}
+body{display:flex;flex-direction:column}
+
+/* ─── SPLASH ─── */
+#SP{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;padding:40px 28px;text-align:center;cursor:pointer}
+.sp-title{font-size:40px;font-weight:700;letter-spacing:6px;color:var(--acc);line-height:1.2}
+.sp-morse{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.sp-sub{font-size:16px;color:var(--mut);letter-spacing:3px}
+.sp-btn{width:100%;max-width:340px;padding:22px;background:var(--acc);color:#000;border:none;border-radius:16px;font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:4px;cursor:pointer;touch-action:manipulation;-webkit-appearance:none;appearance:none;display:block}
+
+/* ─── APP SHELL ─── */
+#AP{display:none;flex-direction:column;height:100%}
+
+/* ─── TOP BAR ─── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg2);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.logo{font-size:18px;font-weight:700;letter-spacing:4px;color:var(--acc);line-height:1.3}
+.logo small{display:block;font-size:11px;color:var(--mut);letter-spacing:2px;margin-top:2px;font-weight:400}
+.hbtns{display:flex;gap:8px}
+.hbtn{background:var(--bg3);border:1px solid var(--bdr);color:var(--txt);padding:11px 16px;border-radius:10px;cursor:pointer;font-family:var(--f);font-size:14px;letter-spacing:1px;touch-action:manipulation}
+
+/* ─── TABS ─── */
+.tabs{display:flex;background:var(--bg2);border-bottom:2px solid var(--bdr);flex-shrink:0}
+.tab{flex:1;padding:16px 4px;text-align:center;cursor:pointer;font-size:13px;letter-spacing:1px;color:var(--mut);border-bottom:3px solid transparent;font-family:var(--f);touch-action:manipulation;line-height:1.3;transition:color .2s,border-color .2s}
+.tab.ON{color:var(--acc);border-bottom-color:var(--acc);font-weight:700}
+
+/* ─── SCROLL + PAGE ─── */
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{padding:20px 16px 80px;max-width:700px;margin:0 auto}
+.panel{display:none}.panel.ON{display:block}
+
+/* ─── CARD ─── */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:22px;margin-bottom:16px}
+.sec{font-size:12px;letter-spacing:3px;color:var(--mut);margin-bottom:12px;text-transform:uppercase}
+
+/* ─── STATS ─── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.stat{background:var(--bg3);border:1px solid var(--bdr);border-radius:12px;padding:14px 6px;text-align:center}
+.stn{font-size:28px;font-weight:700;color:var(--acc);line-height:1}
+.stl{font-size:11px;color:var(--mut);letter-spacing:1px;margin-top:5px}
+
+/* ─── LEVEL BAR ─── */
+.lvlbar{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.lv{flex:1;min-width:46px;padding:12px 4px;text-align:center;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;cursor:pointer;font-size:12px;color:var(--mut);font-family:var(--f);line-height:1.5;touch-action:manipulation}
+.lv.ON{background:var(--acc);color:#000;border-color:var(--acc);font-weight:700}
+
+/* ─── MORSE DISPLAY ─── */
+.mbox{background:var(--bg3);border-radius:14px;padding:24px 14px;min-height:90px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.DS{color:var(--dot);font-size:42px;font-weight:900;line-height:1}
+.DH{color:var(--dsh);font-size:34px;font-weight:900;line-height:1}
+.WS{color:var(--mut);font-size:16px;padding:0 6px;align-self:center}
+.mhint{color:var(--mut);font-size:16px;letter-spacing:2px}
+
+/* ─── FLASHER ─── */
+.flasher{width:56px;height:56px;border-radius:50%;background:var(--bg3);border:2px solid var(--bdr);margin:0 auto 14px;transition:background .05s,box-shadow .05s}
+.flasher.ON{background:var(--gld);box-shadow:0 0 22px var(--gld)}
+
+/* ─── PLAYING ─── */
+.playing{display:none;align-items:center;gap:8px;font-size:14px;color:var(--acc);letter-spacing:2px;justify-content:center;margin-bottom:10px}
+.playing.ON{display:flex}
+.pdot{width:9px;height:9px;border-radius:50%;background:var(--acc);animation:blink .6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
+
+/* ─── PROGRESS DOTS ─── */
+.prog{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;justify-content:center;min-height:16px}
+.pg{width:12px;height:12px;border-radius:50%;background:var(--bg3);border:1px solid var(--bdr);flex-shrink:0}
+.pg.OK{background:var(--grn)}.pg.FL{background:var(--red)}
+.pg.CU{background:var(--gld);animation:blink .8s infinite}
+
+/* ─── ANSWER BUTTONS ─── */
+.ansrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.abtn{padding:26px 10px;background:var(--bg3);border:2px solid var(--bdr);border-radius:14px;cursor:pointer;font-size:32px;font-weight:700;font-family:var(--f);color:var(--txt);text-align:center;touch-action:manipulation;position:relative;line-height:1;transition:border-color .15s}
+.abtn:hover{border-color:var(--acc);color:var(--acc)}
+.abtn.COR{background:var(--grn);border-color:var(--grn);color:#000}
+.abtn.WRG{background:var(--red);border-color:var(--red);color:#fff}
+.kh{position:absolute;bottom:6px;right:10px;font-size:12px;color:var(--mut)}
+
+/* ─── FEEDBACK ─── */
+.fb{padding:18px;border-radius:12px;font-size:16px;letter-spacing:1px;text-align:center;line-height:1.6;margin-bottom:14px}
+.fb-ok{background:rgba(74,222,128,.12);border:1px solid var(--grn);color:var(--grn)}
+.fb-er{background:rgba(248,113,113,.12);border:1px solid var(--red);color:var(--red)}
+.fb-in{background:rgba(56,189,248,.1);border:1px solid var(--acc);color:var(--acc)}
+
+/* ─── COUNTDOWN ─── */
+.cdown{font-size:15px;color:var(--mut);text-align:center;min-height:24px;letter-spacing:2px;margin-bottom:10px}
+
+/* ─── BUTTONS ─── */
+.crow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.btn{padding:15px 20px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;cursor:pointer;font-family:var(--f);font-size:15px;color:var(--txt);letter-spacing:1px;touch-action:manipulation;white-space:nowrap;transition:border-color .15s}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.PRI{background:var(--acc);color:#000;border-color:var(--acc);font-weight:700}
+.btn.WID{flex:1;text-align:center}
+.clabel{font-size:14px;color:var(--mut);display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}
+.clabel input{width:18px;height:18px;accent-color:var(--acc);cursor:pointer;flex-shrink:0}
+
+/* ─── WPM ─── */
+.wrow{display:flex;align-items:center;gap:14px;margin-top:16px;font-size:15px;color:var(--mut)}
+.wrow input[type=range]{flex:1;height:36px;accent-color:var(--acc)}
+.wval{font-size:22px;font-weight:700;color:var(--acc);min-width:36px;text-align:right}
+
+/* ─── TEXT INPUT ─── */
+.tinp{flex:1;padding:18px;background:var(--bg3);border:2px solid var(--bdr);border-radius:12px;color:var(--txt);font-family:var(--f);font-size:20px;letter-spacing:3px;min-width:0;-webkit-appearance:none;outline:none}
+.tinp:focus{border-color:var(--acc)}
+
+/* ─── SEND AUTO-SUBMIT COUNTDOWN ─── */
+.scd{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--bdr)}
+.scd-ring{flex:1;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;position:relative}
+.scd-ring::after{content:'';position:absolute;left:0;top:0;height:100%;background:var(--acc);border-radius:3px;animation:scdFill 2s linear forwards}
+@keyframes scdFill{from{width:0%}to{width:100%}}
+.scd-lbl{font-size:13px;color:var(--acc);letter-spacing:2px;white-space:nowrap}
+
+
+.sch{font-size:100px;font-weight:700;text-align:center;color:var(--acc);line-height:1;padding:10px 0}
+
+.spad{width:100%;min-height:150px;background:var(--bg3);border:3px solid var(--bdr);border-radius:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mut);user-select:none;touch-action:none;margin:16px 0;transition:background .1s,border-color .15s}
+.spad.PR{background:var(--bg2);border-color:var(--acc)}
+.spl{font-size:24px;color:var(--mut);letter-spacing:2px}
+.sps{font-size:14px;color:var(--mut);margin-top:10px;letter-spacing:1px}
+.tbar{height:10px;background:var(--bg3);border-radius:5px;overflow:hidden}
+.tfil{height:100%;border-radius:5px;background:var(--dot);transition:width .04s}
+.tlbl{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin-top:6px}
+.mout{min-height:60px;padding:14px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;background:var(--bg3);border-radius:12px;margin-bottom:12px}
+.tout{font-size:32px;text-align:center;color:var(--acc);letter-spacing:5px;min-height:44px;margin-bottom:16px;font-weight:700}
+
+/* ─── LEARN ─── */
+.catbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.catbtn{padding:13px 18px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;cursor:pointer;font-size:14px;font-family:var(--f);color:var(--mut);letter-spacing:1px;touch-action:manipulation;transition:border-color .15s,background .15s}
+.catbtn:hover{border-color:var(--acc)}
+.catbtn.ON{background:var(--acc);color:#000;border-color:var(--acc);font-weight:700}
+
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px;margin-bottom:16px}
+.tcard{background:var(--bg3);border:2px solid var(--bdr);border-radius:14px;padding:16px 8px 12px;cursor:pointer;text-align:center;touch-action:manipulation;transition:border-color .15s}
+.tcard:hover{border-color:var(--acc)}
+.tcard.SEL{border-color:var(--acc);background:var(--card)}
+.tch{font-size:30px;font-weight:700;color:var(--txt);line-height:1.1}
+.tmorse{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap;margin:8px 0 6px;min-height:26px}
+.tph{font-size:12px;color:var(--mut);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.tnm{font-size:11px;color:var(--mut);margin:8px 0 6px;font-style:italic}
+
+.detcard{background:var(--card);border:2px solid var(--acc);border-radius:18px;padding:26px;margin-bottom:18px}
+.dch{font-size:96px;font-weight:700;text-align:center;color:var(--acc);line-height:1}
+.dph{font-size:22px;color:var(--mut);text-align:center;letter-spacing:4px;margin:8px 0 18px;text-transform:uppercase;font-weight:400}
+.dmorse{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:20px;background:var(--bg3);border-radius:12px;min-height:68px;margin-bottom:18px}
+.dtip{font-size:16px;color:var(--mut);line-height:1.8;padding:18px;background:var(--bg3);border-radius:12px;margin-bottom:18px}
+.dnav{display:flex;gap:10px;flex-wrap:wrap}
+
+/* ─── REFERENCE ─── */
+.rtbl{width:100%;border-collapse:collapse;font-size:15px}
+.rtbl th{text-align:left;padding:10px 12px;font-size:11px;letter-spacing:2px;color:var(--mut);border-bottom:1px solid var(--bdr);font-weight:400}
+.rtbl td{padding:10px 12px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr:hover td{background:var(--bg3)}
+.rch{font-size:20px;font-weight:700;color:var(--txt)}
+.racc{color:var(--acc)}
+.rm{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.rmd{color:var(--dot);font-size:16px;font-weight:900;line-height:1}
+.rmh{color:var(--dsh);font-size:14px;font-weight:900;line-height:1}
+.rms{color:var(--mut);font-size:11px;padding:0 2px}
+.rmut{font-size:14px;color:var(--mut)}
+
+/* ─── SOS BUTTON ─── */
+.sosbtn{width:100%;padding:22px;font-size:17px;letter-spacing:3px;background:rgba(248,113,113,.1);border:2px solid var(--red);color:var(--red);border-radius:14px;cursor:pointer;font-family:var(--f);font-weight:700;touch-action:manipulation;margin-top:18px;transition:background .2s}
+.sosbtn:hover{background:var(--red);color:#fff}
+
+/* ─── MOBILE TWEAKS ─── */
+@media(max-width:430px){
+  .page{padding:16px 12px 80px}
+  .card{padding:18px}
+  .stats{gap:6px}
+  .stn{font-size:24px}
+  .abtn{font-size:28px;padding:22px 6px}
+  .tgrid{grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:8px}
+  .sch{font-size:80px}
+  .dch{font-size:80px}
+  .DS{font-size:36px}.DH{font-size:28px}
+  .dmorse .DS{font-size:40px}.dmorse .DH{font-size:32px}
+  .dtip{font-size:15px}
+  .tab{font-size:12px;padding:14px 2px}
+  .btn{font-size:14px;padding:13px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="SP" onclick="boot()">
+  <div class="sp-title">MORSE</div>
+  <div class="sp-morse">
+    <span class="DS" style="font-size:40px">&#9679;&#9679;&#9679;</span>
+    <span class="DH" style="font-size:32px;padding:0 8px">&#8212;&#8212;&#8212;</span>
+    <span class="DS" style="font-size:40px">&#9679;&#9679;&#9679;</span>
+  </div>
+  <div class="sp-sub">TRAINING STATION</div>
+  <button class="sp-btn" id="spBtn" onclick="boot()">TAP TO BEGIN</button>
+</div>
+
+<!-- APP -->
+<div id="AP">
+  <div class="topbar">
+    <div class="logo">MORSE<small>TRAINING STATION</small></div>
+    <div class="hbtns">
+      <button class="hbtn" id="sosBtn">SOS</button>
+      <button class="hbtn" id="themeBtn">LIGHT</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab ON" data-t="learn">LEARN</div>
+    <div class="tab" data-t="receive">RECEIVE</div>
+    <div class="tab" data-t="send">SEND</div>
+    <div class="tab" data-t="ref">REF</div>
+  </div>
+
+  <div class="scroll">
+  <div class="page">
+
+    <!-- LEARN -->
+    <div id="learn" class="panel ON">
+      <div class="catbar" id="catBar"></div>
+      <div id="detWrap" style="display:none"></div>
+      <div class="tgrid" id="tGrid"></div>
+    </div>
+
+    <!-- RECEIVE -->
+    <div id="receive" class="panel">
+      <div class="lvlbar" id="rLvlBar">
+        <div class="lv ON" data-i="0">L1<br>BASIC</div>
+        <div class="lv" data-i="1">L2<br>LTRS</div>
+        <div class="lv" data-i="2">L3<br>NUMS</div>
+        <div class="lv" data-i="3">L4<br>WORDS</div>
+        <div class="lv" data-i="4">L5<br>PHR</div>
+        <div class="lv" data-i="5">ADV</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stn" id="RS">0</div><div class="stl">SCORE</div></div>
+        <div class="stat"><div class="stn" id="RK">0</div><div class="stl">STREAK</div></div>
+        <div class="stat"><div class="stn" id="RA">--</div><div class="stl">ACC%</div></div>
+        <div class="stat"><div class="stn" id="RW">12</div><div class="stl">WPM</div></div>
+      </div>
+      <div class="card">
+        <div class="flasher" id="flasher"></div>
+        <div class="playing" id="playInd"><div class="pdot"></div>PLAYING</div>
+        <div class="mbox" id="mbox"><span class="mhint">READY...</span></div>
+        <div class="prog" id="prog"></div>
+        <div id="rfb"></div>
+        <div class="ansrow" id="ansRow"></div>
+        <div class="cdown" id="cdown"></div>
+        <div class="crow">
+          <button class="btn PRI WID" id="replayBtn">REPLAY &nbsp;[R]</button>
+          <label class="clabel"><input type="checkbox" id="visMode"> FLASH</label>
+          <label class="clabel"><input type="checkbox" id="farnBtn"> FARNSWORTH</label>
+        </div>
+        <div class="wrow">
+          <span>WPM</span>
+          <input type="range" id="wpmSlide" min="5" max="30" value="12" step="1">
+          <span class="wval" id="wpmLbl">12</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEND -->
+    <div id="send" class="panel">
+      <div class="lvlbar" id="sLvlBar">
+        <div class="lv ON" data-i="0">L1<br>BASIC</div>
+        <div class="lv" data-i="1">L2<br>LTRS</div>
+        <div class="lv" data-i="2">L3<br>NUMS</div>
+        <div class="lv" data-i="3">L4<br>WORDS</div>
+        <div class="lv" data-i="4">L5<br>PHR</div>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat"><div class="stn" id="SS">0</div><div class="stl">SCORE</div></div>
+        <div class="stat"><div class="stn" id="SK">0</div><div class="stl">STREAK</div></div>
+        <div class="stat"><div class="stn" id="SA">--</div><div class="stl">ACC%</div></div>
+      </div>
+      <div class="card">
+        <div class="sec">SEND THIS CHARACTER</div>
+        <div class="sch" id="sChar">?</div>
+        <div class="mout" id="sMout" style="margin-top:20px"></div>
+        <div class="tout" id="sTout"></div>
+        <div class="spad" id="sendPad">
+          <div class="spl">PRESS &amp; HOLD</div>
+          <div class="sps">SPACEBAR &nbsp;/&nbsp; TAP &nbsp;/&nbsp; TOUCH HERE</div>
+        </div>
+        <div class="tbar"><div class="tfil" id="tFil"></div></div>
+        <div class="tlbl"><span>DOT &lt; 150ms</span><span>DASH &gt; 150ms</span></div>
+        <div class="scd" id="scdBar" style="display:none">
+          <div class="scd-ring" id="scdRing"></div>
+          <span class="scd-lbl" id="scdLbl">submitting...</span>
+        </div>
+        <div id="sfb" style="margin-top:16px"></div>
+        <div class="crow" style="margin-top:16px">
+          <button class="btn WID" id="clearBtn">CLEAR</button>
+          <button class="btn WID" id="skipBtn">SKIP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCE -->
+    <div id="ref" class="panel">
+      <div class="card" style="margin-bottom:14px">
+        <div class="sec">ALPHABET</div>
+        <table class="rtbl"><thead><tr><th>CH</th><th>CODE</th><th>CH</th><th>CODE</th><th>CH</th><th>CODE</th></tr></thead><tbody id="rAlpha"></tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="sec">NUMBERS</div>
+        <table class="rtbl"><thead><tr><th>CH</th><th>CODE</th><th>CH</th><th>CODE</th><th>CH</th><th>CODE</th></tr></thead><tbody id="rNums"></tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="sec">PUNCTUATION</div>
+        <table class="rtbl"><thead><tr><th>CH</th><th>CODE</th><th>NAME</th></tr></thead><tbody id="rPunct"></tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="sec">PROSIGNS</div>
+        <table class="rtbl"><thead><tr><th>SIGN</th><th>CODE</th><th>MEANING</th></tr></thead><tbody id="rPro"></tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="sec">Q-CODES</div>
+        <table class="rtbl"><thead><tr><th>CODE</th><th>MEANING</th></tr></thead><tbody id="rQ"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="sec">ABBREVIATIONS</div>
+        <table class="rtbl"><thead><tr><th>ABBR</th><th>MEANING</th></tr></thead><tbody id="rAbbr"></tbody></table>
+      </div>
+      <button class="sosbtn" id="refSOS">SOS — EMERGENCY TRAINING MODE</button>
+    </div>
+
+  </div><!-- /page -->
+  </div><!-- /scroll -->
+</div><!-- /app -->
+
+<script>
+/* ════════════════════════ MORSE DATA ════════════════════════ */
+var MC={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',0:'-----',1:'.----',2:'..---',3:'...--',4:'....-',5:'.....',6:'-....',7:'--...',8:'---..',9:'----.','.':'.-.-.-',',':'--..--','?':'..--..','/':'-..-.',AR:'.-.-.',SK:'...-.-',BT:'-...-',KN:'-.--.','AS':'.-...',SOS:'...---...',HH:'........'};
+var RM={};Object.keys(MC).forEach(function(k){RM[MC[k]]=k;});
+
+var NATO={A:'Alpha',B:'Bravo',C:'Charlie',D:'Delta',E:'Echo',F:'Foxtrot',G:'Golf',H:'Hotel',I:'India',J:'Juliet',K:'Kilo',L:'Lima',M:'Mike',N:'November',O:'Oscar',P:'Papa',Q:'Quebec',R:'Romeo',S:'Sierra',T:'Tango',U:'Uniform',V:'Victor',W:'Whiskey',X:'X-ray',Y:'Yankee',Z:'Zulu'};
+var NNUM=['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine'];
+
+var TD={
+  letters:[
+    {c:'E',m:'.',p:'Echo',   t:'Single dot — most common letter in English.'},
+    {c:'T',m:'-',p:'Tango',  t:'Single dash — second most common. Opposite of E.'},
+    {c:'I',m:'..',p:'India', t:'Two dots. Think of two eyes.'},
+    {c:'A',m:'.-',p:'Alpha', t:'Dot then dash. A-HA! Short then long.'},
+    {c:'N',m:'-.',p:'November',t:'Dash then dot. Mirror image of A.'},
+    {c:'M',m:'--',p:'Mike',  t:'Two dashes. MM — two long sounds.'},
+    {c:'S',m:'...',p:'Sierra',t:'Three dots. SOS starts with S.'},
+    {c:'O',m:'---',p:'Oscar', t:'Three dashes. The O in SOS.'},
+    {c:'R',m:'.-.',p:'Romeo', t:'Dot-dash-dot. Very common in English.'},
+    {c:'H',m:'....',p:'Hotel',t:'Four dots — four quick taps.'},
+    {c:'D',m:'-..', p:'Delta',t:'Dash then two dots. One long, two short.'},
+    {c:'L',m:'.-..',p:'Lima', t:'Dot-dash-dot-dot.'},
+    {c:'U',m:'..-',p:'Uniform',t:'Two dots then a dash.'},
+    {c:'C',m:'-.-.',p:'Charlie',t:'Dash-dot-dash-dot. Alternating pattern.'},
+    {c:'K',m:'-.-',p:'Kilo',  t:'Dash-dot-dash. Also the go-ahead prosign.'},
+    {c:'W',m:'.--',p:'Whiskey',t:'Dot then two dashes.'},
+    {c:'F',m:'..-.',p:'Foxtrot',t:'Two dots, dash, dot.'},
+    {c:'G',m:'--.',p:'Golf',  t:'Two dashes then a dot.'},
+    {c:'J',m:'.---',p:'Juliet',t:'One dot then three dashes.'},
+    {c:'P',m:'.--.',p:'Papa', t:'Dot, two dashes, dot.'},
+    {c:'Q',m:'--.-',p:'Quebec',t:'Two dashes, dot, dash. Seen in Q-codes.'},
+    {c:'V',m:'...-',p:'Victor',t:'Three dots then a dash — V for Victory.'},
+    {c:'X',m:'-..-',p:'X-ray',t:'Dash, two dots, dash. Symmetric.'},
+    {c:'Y',m:'-.--',p:'Yankee',t:'Dash, dot, two dashes.'},
+    {c:'Z',m:'--..',p:'Zulu', t:'Two dashes then two dots.'},
+    {c:'B',m:'-...',p:'Bravo',t:'Dash then three dots.'}
+  ],
+  numbers:[
+    {c:'1',m:'.----',p:'One',  t:'One dot, four dashes.'},
+    {c:'2',m:'..---',p:'Two',  t:'Two dots, three dashes.'},
+    {c:'3',m:'...--',p:'Three',t:'Three dots, two dashes.'},
+    {c:'4',m:'....-',p:'Four', t:'Four dots, one dash.'},
+    {c:'5',m:'.....',p:'Five', t:'Five dots — perfectly symmetrical.'},
+    {c:'6',m:'-....',p:'Six',  t:'One dash, four dots. Mirror of 4.'},
+    {c:'7',m:'--...',p:'Seven',t:'Two dashes, three dots. Mirror of 3.'},
+    {c:'8',m:'---..',p:'Eight',t:'Three dashes, two dots. Mirror of 2.'},
+    {c:'9',m:'----.',p:'Nine', t:'Four dashes, one dot. Mirror of 1.'},
+    {c:'0',m:'-----',p:'Zero', t:'Five dashes. The opposite of 5.'}
+  ],
+  punctuation:[
+    {c:'.',m:'.-.-.-',p:'Period',  t:'Full stop. Alternating dot-dash, three times.'},
+    {c:',',m:'--..--',p:'Comma',   t:'Two dashes, two dots, two dashes.'},
+    {c:'?',m:'..--..',p:'Question',t:'Two dots, two dashes, two dots.'},
+    {c:'/',m:'-..-.',p:'Slash',    t:'Fraction bar / separator. Common in callsigns.'}
+  ],
+  prosigns:[
+    {c:'AR',m:'.-.-.',p:'End Msg',  t:'End of message. Sent as one continuous character.'},
+    {c:'SK',m:'...-.-',p:'End QSO', t:'End of contact — the conversation is over.'},
+    {c:'BT',m:'-...-',p:'Break',   t:'Break / new paragraph. Separates message parts.'},
+    {c:'KN',m:'-.--.', p:'Go Ahead',t:'Go ahead, specific station only.'},
+    {c:'AS',m:'.-...',p:'Wait',    t:'Wait / stand by.'},
+    {c:'SOS',m:'...---...',p:'Distress',t:'Three dots, three dashes, three dots — no gaps. International distress signal.'},
+    {c:'HH',m:'........',p:'Error', t:'Eight dots — ignore my last transmission, I made a mistake.'}
+  ],
+  qcodes:[
+    {c:'QRN',m:'',p:'Noise',    t:'Atmospheric noise / static interference.'},
+    {c:'QRM',m:'',p:'Interfere',t:'Man-made interference from other stations.'},
+    {c:'QRO',m:'',p:'More Pwr', t:'Increase transmitter power.'},
+    {c:'QRP',m:'',p:'Less Pwr', t:'Decrease power. Also means low-power operation.'},
+    {c:'QRS',m:'',p:'Slow Down',t:'Send more slowly — reduce your speed.'},
+    {c:'QRT',m:'',p:'Stop TX',  t:'Stop transmitting / close down the station.'},
+    {c:'QRZ',m:'',p:'Who Calls',t:'Who is calling me? I heard my callsign but missed it.'},
+    {c:'QSB',m:'',p:'Fading',   t:'Signal strength is fading or varying.'},
+    {c:'QSL',m:'',p:'Confirm',  t:'I confirm receipt. Also refers to QSL confirmation cards.'},
+    {c:'QSO',m:'',p:'Contact',  t:'A two-way radio contact or conversation.'},
+    {c:'QTH',m:'',p:'Location', t:'My location is...'},
+    {c:'QSY',m:'',p:'Change Freq',t:'Change to another frequency.'}
+  ],
+  abbreviations:[
+    {c:'73', m:'',p:'Best Regards',t:'Best regards. The most famous ham radio farewell.'},
+    {c:'88', m:'',p:'Love & Kisses',t:'Love and kisses. Used between friends on air.'},
+    {c:'CQ', m:'',p:'Calling All', t:'Calling any station. CQ CQ CQ DE [callsign].'},
+    {c:'DE', m:'',p:'From',        t:'From. Separates callsigns: CQ DE W1ABC.'},
+    {c:'K',  m:'-.-',p:'Go Ahead', t:'Go ahead. Invites any station to reply.'},
+    {c:'R',  m:'.-.',p:'Roger',    t:'Roger — message received and understood.'},
+    {c:'PSE',m:'',p:'Please',      t:'Please. PSE QRS = please send more slowly.'},
+    {c:'TNX',m:'',p:'Thanks',      t:'Thanks.'},
+    {c:'UR', m:'',p:'Your',        t:'Your. UR RST 599 = your signal report is perfect.'},
+    {c:'RST',m:'',p:'Signal Rpt',  t:'Signal report: Readability (1-5), Strength (1-9), Tone (1-9). 599 = perfect.'},
+    {c:'FB', m:'',p:'Excellent',   t:'Fine business — excellent! Expression of approval.'},
+    {c:'WX', m:'',p:'Weather',     t:'Weather.'},
+    {c:'OM', m:'',p:'Male Op',     t:'Old man — friendly term for any male operator.'},
+    {c:'YL', m:'',p:'Female Op',   t:'Young lady — any female operator.'},
+    {c:'DX', m:'',p:'Long Dist',   t:'Long-distance or rare/exotic station.'},
+    {c:'HI', m:'',p:'Ha Ha',       t:'Laughter on air. The Morse LOL.'}
+  ]
+};
+
+var CATS=['letters','numbers','punctuation','prosigns','qcodes','abbreviations'];
+var CLBL={letters:'ALPHABET',numbers:'NUMBERS',punctuation:'PUNCT',prosigns:'PROSIGNS',qcodes:'Q-CODES',abbreviations:'ABBREV'};
+
+var LEVELS=[
+  {items:['E','T','A','N','I','M']},
+  {items:['E','T','A','N','I','M','S','O','R','H','D','L','U','C']},
+  {items:['0','1','2','3','4','5','6','7','8','9']},
+  {items:['THE','AND','YOU','ARE','CAN','FOR','NOT','HAS','SOS']},
+  {items:['HELLO WORLD','SOS HELP','CQ CQ DE W1ABC','GOOD MORNING','73 DE K1XYZ']},
+  {items:null}
+];
+
+/* ════════════════════════ STATE ════════════════════════ */
+/* NOTE: variable named rcvLog (not 'history') to avoid shadowing window.history */
+var audioCtx=null;
+var rLv=0,rScore=0,rStreak=0,rTotal=0,rCorrect=0;
+var sLv=0,sScore=0,sStreak=0,sTotal=0,sCorrect=0;
+var curItem='',curMorse='',curChoices=[];
+var wpm=12;
+var sndMorse='',sndChar='';
+var pressed=false,pressT=0,timerIv=null;
+var activeTab='learn',answered=false,apTimer=null,flashTimer=null;
+var rcvLog=[];
+var tCat='letters',selItem=null,selIdx=0;
+var dark=true;
+
+/* ════════════════════════ AUDIO ════════════════════════ */
+function initAudio(){
+  if(audioCtx)return;
+  try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+}
+function resumeAudio(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}
+function unlockAudio(){
+  initAudio();resumeAudio();
+  if(!audioCtx)return;
+  try{var b=audioCtx.createBuffer(1,1,22050);var s=audioCtx.createBufferSource();s.buffer=b;s.connect(audioCtx.destination);s.start(0);}catch(e){}
+}
+function beep(start,dur,freq){
+  if(!audioCtx)return;resumeAudio();freq=freq||700;
+  try{
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;o.type='sine';
+    var t=audioCtx.currentTime;
+    g.gain.setValueAtTime(0,t+start);
+    g.gain.linearRampToValueAtTime(0.4,t+start+0.006);
+    g.gain.setValueAtTime(0.4,t+start+dur-0.006);
+    g.gain.linearRampToValueAtTime(0,t+start+dur);
+    o.start(t+start);o.stop(t+start+dur+0.02);
+  }catch(e){}
+}
+function note(freq,dur){
+  if(!audioCtx)return;resumeAudio();
+  try{
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;o.type='sine';
+    g.gain.setValueAtTime(0.3,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+dur+0.02);
+  }catch(e){}
+}
+
+/* ════════════════════════ MORSE ENGINE ════════════════════════ */
+function calcTimings(code,w,farn){
+  var dot=1200/w,dash=dot*3,sg=dot;
+  var lg=farn?dot*7:dot*3,wg=farn?dot*14:dot*7;
+  var arr=[],t=0;
+  var words=code.split(' / ');
+  for(var wi=0;wi<words.length;wi++){
+    var letters=words[wi].split(' ');
+    for(var li=0;li<letters.length;li++){
+      var ltr=letters[li];
+      for(var i=0;i<ltr.length;i++){
+        var d=ltr[i]==='.'?dot:dash;arr.push({t:t,d:d});t+=d;
+        if(i<ltr.length-1)t+=sg;
+      }
+      if(li<letters.length-1)t+=lg;
+    }
+    if(wi<words.length-1)t+=wg;
+  }
+  return{arr:arr,total:t};
+}
+function w2m(word){
+  var out=[];
+  for(var i=0;i<word.length;i++){var c=MC[word[i].toUpperCase()];if(c)out.push(c);}
+  return out.join(' ');
+}
+function p2m(phrase){return phrase.trim().split(' ').map(w2m).join(' / ');}
+
+function playCode(code,w,farn,flash,done){
+  if(flashTimer){clearInterval(flashTimer);flashTimer=null;}
+  resumeAudio();
+  var td=calcTimings(code,w,farn);
+  var fl=document.getElementById('flasher');
+  var pi=document.getElementById('playInd');
+  if(pi)pi.className='playing ON';
+  for(var i=0;i<td.arr.length;i++){beep(td.arr[i].t/1000,td.arr[i].d/1000);}
+  if(flash){
+    var idx=0,active=false,elapsed=0;
+    flashTimer=setInterval(function(){
+      if(idx>=td.arr.length){clearInterval(flashTimer);flashTimer=null;if(fl)fl.classList.remove('ON');if(pi)pi.className='playing';if(done)done();return;}
+      var tt=td.arr[idx].t,dd=td.arr[idx].d;
+      if(elapsed>=tt&&!active){if(fl)fl.classList.add('ON');active=true;}
+      if(active&&elapsed>=tt+dd){if(fl)fl.classList.remove('ON');active=false;idx++;}
+      elapsed+=20;
+    },20);
+  }else{
+    setTimeout(function(){if(pi)pi.className='playing';if(done)done();},td.total+200);
+  }
+}
+
+/* ════════════════════════ RENDER MORSE ════════════════════════ */
+function mkMorseNodes(code){
+  var frag=document.createDocumentFragment();
+  for(var i=0;i<code.length;i++){
+    var c=code[i],el=document.createElement('span');
+    if(c==='.'){el.className='DS';el.innerHTML='&#9679;';}
+    else if(c==='-'){el.className='DH';el.innerHTML='&#8212;';}
+    else if(c===' '){el.className='WS';el.textContent='/';}
+    else el.textContent=c;
+    frag.appendChild(el);
+  }
+  return frag;
+}
+function setMorse(el,code){el.innerHTML='';el.appendChild(mkMorseNodes(code));}
+
+/* ════════════════════════ RECEIVE ════════════════════════ */
+function pickItem(lv){
+  if(lv===5){
+    var p=Object.keys(MC).filter(function(k){return k.length===1&&isNaN(k);}).concat(LEVELS[3].items);
+    return p[Math.floor(Math.random()*p.length)];
+  }
+  var it=LEVELS[lv].items;return it[Math.floor(Math.random()*it.length)];
+}
+function makeChoices(correct,lv){
+  var pool;
+  if(lv<2) pool=Object.keys(MC).filter(function(k){return k.length===1&&isNaN(k);});
+  else if(lv===2) pool='0123456789'.split('');
+  else if(lv>=3) pool=LEVELS[Math.min(lv,4)].items;
+  else pool=Object.keys(MC).filter(function(k){return k.length===1;});
+  var arr=[correct],rest=pool.filter(function(x){return x!==correct;});
+  while(arr.length<4&&rest.length>0)arr.push(rest.splice(Math.floor(Math.random()*rest.length),1)[0]);
+  return arr.sort(function(){return Math.random()-.5;});
+}
+function redrawProg(){
+  var p=document.getElementById('prog');if(!p)return;p.innerHTML='';
+  var last=rcvLog.slice(-10);
+  for(var i=0;i<last.length;i++){var d=document.createElement('div');d.className='pg '+(last[i]?'OK':'FL');p.appendChild(d);}
+  var c=document.createElement('div');c.className='pg CU';p.appendChild(c);
+}
+
+function buildRcv(){
+  if(apTimer){clearTimeout(apTimer);apTimer=null;}
+  answered=false;
+  var item=pickItem(rLv);
+  curItem=item;
+  var morse=(item.indexOf(' ')>=0)?p2m(item):(MC[item]||w2m(item));
+  curMorse=morse;
+
+  var fb=document.getElementById('rfb');if(fb)fb.innerHTML='';
+  var cd=document.getElementById('cdown');if(cd)cd.textContent='';
+  var mb=document.getElementById('mbox');
+  if(mb){mb.innerHTML='';var h=document.createElement('span');h.className='mhint';h.textContent='PLAYING...';mb.appendChild(h);}
+
+  var row=document.getElementById('ansRow');if(!row)return;
+  row.innerHTML='';
+  redrawProg();
+
+  if(rLv<3){
+    var ch=makeChoices(item,rLv);
+    curChoices=ch;
+    for(var ci=0;ci<ch.length;ci++){
+      (function(val){
+        var b=document.createElement('button');
+        b.className='abtn';b.dataset.v=val;
+        b.innerHTML=val+'<span class="kh">'+val+'</span>';
+        b.addEventListener('touchend',function(e){e.preventDefault();if(!b.disabled)checkRcv(val,b);},passiveOpts(false));
+        b.onclick=function(){if(!b.disabled)checkRcv(val,b);};
+        row.appendChild(b);
+      })(ch[ci]);
+    }
+  }else{
+    curChoices=[];
+    var wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:10px;width:100%;margin-top:4px';
+    var inp=document.createElement('input');
+    inp.type='text';inp.id='rcvInp';inp.placeholder='TYPE ANSWER HERE...';
+    inp.setAttribute('autocapitalize','characters');
+    inp.setAttribute('autocorrect','off');inp.autocomplete='off';
+    inp.className='tinp';
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter')checkRcv(inp.value.toUpperCase().trim(),null);});
+    var ob=document.createElement('button');ob.className='btn PRI';ob.textContent='OK';ob.style.padding='18px 22px';
+    ob.addEventListener('touchend',function(e){e.preventDefault();checkRcv(inp.value.toUpperCase().trim(),null);},passiveOpts(false));
+    ob.onclick=function(){checkRcv(inp.value.toUpperCase().trim(),null);};
+    wrap.appendChild(inp);wrap.appendChild(ob);row.appendChild(wrap);
+  }
+
+  var farn=document.getElementById('farnBtn').checked;
+  var vis=document.getElementById('visMode').checked;
+  playCode(morse,wpm,farn,vis,function(){
+    /* No morse shown after playback — audio/flash only, no visual hint */
+    var mb2=document.getElementById('mbox');
+    if(mb2){mb2.innerHTML='';var hh=document.createElement('span');hh.className='mhint';hh.textContent='?';mb2.appendChild(hh);}
+    var inp2=document.getElementById('rcvInp');if(inp2)inp2.focus();
+  });
+}
+
+function checkRcv(ans,btn){
+  if(answered)return;
+  answered=true;rTotal++;
+  document.querySelectorAll('#ansRow .abtn').forEach(function(b){b.disabled=true;});
+  var inp=document.getElementById('rcvInp');if(inp)inp.disabled=true;
+  var ok=(ans===curItem);
+  rcvLog.push(ok);if(rcvLog.length>20)rcvLog.shift();
+  var fb=document.getElementById('rfb');
+  var cd=document.getElementById('cdown');
+  if(ok){
+    rScore+=10;rStreak++;rCorrect++;
+    if(btn)btn.classList.add('COR');
+    else{var cb=document.querySelector('#ansRow .abtn[data-v="'+curItem+'"]');if(cb)cb.classList.add('COR');}
+    /* correct: simple green tick, no morse shown, auto-advance */
+    if(fb)fb.innerHTML='<div class="fb fb-ok">CORRECT!</div>';
+    note(820,.09);setTimeout(function(){note(1040,.09);},130);
+    updRcvStats();saveProg();
+    var delay=1400,rem=Math.ceil(delay/1000);
+    if(cd)cd.textContent='NEXT IN '+rem+'s';
+    var iv=setInterval(function(){rem--;var cdEl=document.getElementById('cdown');if(!cdEl)return clearInterval(iv);cdEl.textContent=rem>0?'NEXT IN '+rem+'s':'';if(rem<=0)clearInterval(iv);},1000);
+    apTimer=setTimeout(buildRcv,delay);
+  }else{
+    rStreak=0;
+    if(btn)btn.classList.add('WRG');
+    var cb2=document.querySelector('#ansRow .abtn[data-v="'+curItem+'"]');if(cb2)cb2.classList.add('COR');
+    /* wrong: show correct answer + morse, wait for user to tap GOT IT */
+    var mb3=document.getElementById('mbox');if(mb3)setMorse(mb3,curMorse);
+    if(fb)fb.innerHTML=
+      '<div class="fb fb-er" style="margin-bottom:12px">WRONG &mdash; The correct answer is &nbsp;<strong>'+curItem+'</strong><br>'+
+      '<span style="font-size:13px;letter-spacing:1px">Morse: '+curMorse+'</span></div>'+
+      '<button class="btn PRI WID" id="gotItBtn" style="width:100%;font-size:18px;padding:18px">GOT IT &mdash; NEXT</button>';
+    note(200,.35);
+    updRcvStats();saveProg();
+    if(cd)cd.textContent='';
+    /* wire up GOT IT button */
+    var gib=document.getElementById('gotItBtn');
+    if(gib){
+      gib.addEventListener('touchend',function(e){e.preventDefault();buildRcv();},passiveOpts(false));
+      gib.onclick=function(){buildRcv();};
+    }
+  }
+}
+
+function updRcvStats(){
+  var s=document.getElementById('RS');if(s)s.textContent=rScore;
+  var k=document.getElementById('RK');if(k)k.textContent=rStreak;
+  var a=document.getElementById('RA');if(a)a.textContent=rTotal?Math.round(rCorrect/rTotal*100)+'%':'--';
+}
+function replayMorse(){
+  if(!curMorse)return;
+  var farn=document.getElementById('farnBtn').checked;
+  var vis=document.getElementById('visMode').checked;
+  playCode(curMorse,wpm,farn,vis,null);
+}
+
+/* ════════════════════════ SEND ════════════════════════ */
+function buildSnd(){
+  cancelAutoSub();
+  var item=pickItem(sLv);
+  sndChar=(sLv>=3)?item.split('')[0]:item;
+  var sc=document.getElementById('sChar');if(sc)sc.textContent=sndChar;
+  sndMorse='';
+  var mo=document.getElementById('sMout');if(mo)mo.innerHTML='';
+  var to=document.getElementById('sTout');if(to)to.textContent='';
+  var fb=document.getElementById('sfb');if(fb)fb.innerHTML='';
+  /* re-enable send pad in case it was locked after wrong answer */
+  var pad=document.getElementById('sendPad');if(pad)pad.style.pointerEvents='';
+  var clr=document.getElementById('clearBtn');if(clr)clr.disabled=false;
+}
+function clearSnd(){
+  cancelAutoSub();
+  sndMorse='';
+  var mo=document.getElementById('sMout');if(mo)mo.innerHTML='';
+  var to=document.getElementById('sTout');if(to)to.textContent='';
+}
+function checkSnd(){
+  cancelAutoSub();
+  if(!sndMorse.trim())return;
+  var expected=MC[sndChar]||w2m(sndChar);
+  var ok=(sndMorse.trim()===expected);
+  sTotal++;
+  var fb=document.getElementById('sfb');
+  if(ok){
+    sScore+=10;sStreak++;sCorrect++;
+    if(fb)fb.innerHTML='<div class="fb fb-ok">CORRECT!</div>';
+    note(820,.09);setTimeout(function(){note(1040,.09);},110);
+    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
+    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
+    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
+    saveProg();setTimeout(buildSnd,1400);
+  }else{
+    sStreak=0;
+    var expected2=MC[sndChar]||w2m(sndChar);
+    if(fb){
+      fb.innerHTML=
+        '<div class="fb fb-er" style="margin-bottom:12px">WRONG &mdash; You sent: <strong>'+sndMorse.trim()+'</strong><br>'+
+        'Correct pattern for <strong>'+sndChar+'</strong>:</div>'+
+        '<div id="sCorrectPat" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:18px;background:var(--bg3);border-radius:12px;margin-bottom:14px;min-height:56px"></div>'+
+        '<button class="btn PRI WID" id="sGotItBtn" style="width:100%;font-size:18px;padding:18px">GOT IT &mdash; NEXT</button>';
+      var sp=document.getElementById('sCorrectPat');
+      if(sp)setMorse(sp,expected2);
+      var sgib=document.getElementById('sGotItBtn');
+      if(sgib){
+        sgib.addEventListener('touchend',function(e){e.preventDefault();buildSnd();},passiveOpts(false));
+        sgib.onclick=function(){buildSnd();};
+      }
+    }
+    note(200,.35);
+    var pad=document.getElementById('sendPad');if(pad)pad.style.pointerEvents='none';
+    var clr=document.getElementById('clearBtn');if(clr)clr.disabled=true;
+    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
+    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
+    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
+    saveProg();
+  }
+}
+function pressStart(e){
+  if(e&&e.cancelable)e.preventDefault();
+  cancelAutoSub(); /* cancel pending submit — user is still sending */
+  if(pressed)return;pressed=true;pressT=Date.now();
+  var pad=document.getElementById('sendPad');if(pad)pad.classList.add('PR');
+  resumeAudio();
+  if(audioCtx){
+    try{var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=700;o.type='sine';g.gain.setValueAtTime(0.3,audioCtx.currentTime);o.start();window._sndOsc=o;}catch(er){}
+  }
+  timerIv=setInterval(function(){
+    var pct=Math.min((Date.now()-pressT)/300*100,100);
+    var f=document.getElementById('tFil');
+    if(f){f.style.width=pct+'%';f.style.background=pct<50?'var(--dot)':'var(--dsh)';}
+  },20);
+}
+var autoSubTimer=null;
+function cancelAutoSub(){
+  if(autoSubTimer){clearTimeout(autoSubTimer);autoSubTimer=null;}
+  var bar=document.getElementById('scdBar');if(bar)bar.style.display='none';
+}
+function scheduleAutoSub(){
+  cancelAutoSub();
+  if(!sndMorse.trim())return;
+  var bar=document.getElementById('scdBar');
+  var ring=document.getElementById('scdRing');
+  var lbl=document.getElementById('scdLbl');
+  if(bar){
+    bar.style.display='flex';
+    /* restart CSS animation by removing and re-adding */
+    if(ring){ring.style.animation='none';void ring.offsetHeight;ring.style.animation='';}
+    if(lbl)lbl.textContent='submitting in 2s...';
+  }
+  autoSubTimer=setTimeout(function(){
+    var b2=document.getElementById('scdBar');if(b2)b2.style.display='none';
+    checkSnd();
+  },2000);
+}
+function pressEnd(e){
+  if(e&&e.cancelable)e.preventDefault();
+  if(!pressed)return;pressed=false;clearInterval(timerIv);
+  var f=document.getElementById('tFil');if(f)f.style.width='0%';
+  var pad=document.getElementById('sendPad');if(pad)pad.classList.remove('PR');
+  if(window._sndOsc){try{window._sndOsc.stop();}catch(er){}}
+  var sym=(Date.now()-pressT<150)?'.':'-';
+  sndMorse+=sym;
+  var mo=document.getElementById('sMout');if(mo)setMorse(mo,sndMorse);
+  var dec=RM[sndMorse];
+  var to=document.getElementById('sTout');if(to)to.textContent=dec||'';
+  /* schedule auto-submit 2s after last key release */
+  scheduleAutoSub();
+}
+
+/* ════════════════════════ LEARN ════════════════════════ */
+function buildCats(){
+  var el=document.getElementById('catBar');if(!el)return;el.innerHTML='';
+  CATS.forEach(function(c){
+    var b=document.createElement('div');
+    b.className='catbtn'+(c===tCat?' ON':'');
+    b.textContent=CLBL[c];
+    b.addEventListener('touchend',function(e){e.preventDefault();tCat=c;buildCats();buildGrid();hideDetail();},passiveOpts(false));
+    b.onclick=function(){tCat=c;buildCats();buildGrid();hideDetail();};
+    el.appendChild(b);
+  });
+}
+function buildGrid(){
+  var g=document.getElementById('tGrid');if(!g)return;g.innerHTML='';
+  var items=TD[tCat];
+  for(var idx=0;idx<items.length;idx++){
+    (function(item,i){
+      var d=document.createElement('div');
+      d.className='tcard'+(selItem&&selItem.c===item.c?' SEL':'');
+      var cDiv=document.createElement('div');cDiv.className='tch';cDiv.textContent=item.c;
+      var mDiv=document.createElement('div');
+      if(item.m){mDiv.className='tmorse';mDiv.appendChild(mkMorseNodes(item.m));}
+      else{mDiv.className='tnm';mDiv.textContent='written code';}
+      var pDiv=document.createElement('div');pDiv.className='tph';pDiv.textContent=item.p||item.c;
+      d.appendChild(cDiv);d.appendChild(mDiv);d.appendChild(pDiv);
+      d.addEventListener('touchend',function(e){e.preventDefault();showDetail(item,i);},passiveOpts(false));
+      d.onclick=function(){showDetail(item,i);};
+      g.appendChild(d);
+    })(items[idx],idx);
+  }
+}
+function showDetail(item,idx){
+  /* iOS-safe object copy — Object.assign not available on old Safari */
+  selItem={c:item.c,m:item.m,p:item.p,t:item.t,idx:idx};
+  selIdx=idx;
+  buildGrid();
+  var dw=document.getElementById('detWrap');if(!dw)return;
+  dw.style.display='block';
+  var html='<div class="detcard">';
+  html+='<div class="dch">'+item.c+'</div>';
+  if(item.p)html+='<div class="dph">'+item.p+'</div>';
+  html+='<div class="dmorse" id="dMorse"></div>';
+  html+='<div class="dtip">'+item.t+'</div>';
+  html+='<div class="dnav">';
+  if(item.m)html+='<button class="btn PRI" onclick="playDet()">PLAY SOUND</button>';
+  html+='<button class="btn" onclick="navDet(-1)">PREV</button>';
+  html+='<button class="btn" onclick="navDet(1)">NEXT</button>';
+  html+='<button class="btn" onclick="hideDet()">CLOSE</button>';
+  html+='</div></div>';
+  dw.innerHTML=html;
+  var dm=document.getElementById('dMorse');
+  if(dm){
+    if(item.m)setMorse(dm,item.m);
+    else{dm.style.cssText='font-size:15px;color:var(--mut);text-align:center';dm.textContent='No Morse pattern — used as a written or spoken code';}
+  }
+  dw.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(item.m)setTimeout(playDet,400);
+}
+function playDet(){if(!selItem||!selItem.m)return;playCode(selItem.m,10,true,false,null);}
+function navDet(dir){var items=TD[tCat];var ni=(selIdx+dir+items.length)%items.length;showDetail(items[ni],ni);}
+function hideDet(){var dw=document.getElementById('detWrap');if(dw)dw.style.display='none';selItem=null;buildGrid();}
+
+/* ════════════════════════ REFERENCE ════════════════════════ */
+function refM(code){
+  var html='<div class="rm">';
+  for(var i=0;i<code.length;i++){
+    if(code[i]==='.')html+='<span class="rmd">&#9679;</span>';
+    else if(code[i]==='-')html+='<span class="rmh">&#8212;</span>';
+    else if(code[i]===' ')html+='<span class="rms">/</span>';
+  }
+  return html+'</div>';
+}
+function td2(a,b){return '<td>'+a+'</td><td>'+b+'</td>';}
+function buildRef(){
+  var alpha='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  var ab=document.getElementById('rAlpha');
+  for(var i=0;i<alpha.length;i+=3){
+    var tr=document.createElement('tr'),s='';
+    for(var j=0;j<3;j++){var ch=alpha[i+j];s+=ch?td2('<span class="rch">'+ch+'</span>',refM(MC[ch])):td2('','');}
+    tr.innerHTML=s;ab.appendChild(tr);
+  }
+  var nb=document.getElementById('rNums');
+  for(var i=0;i<10;i+=3){
+    var tr=document.createElement('tr'),s='';
+    for(var j=0;j<3;j++){var ch=String(i+j);s+=(i+j<10)?td2('<span class="rch">'+ch+'</span>',refM(MC[ch])):td2('','');}
+    tr.innerHTML=s;nb.appendChild(tr);
+  }
+  [['.',  '.-.-.-','Full stop'],[',','--..--','Comma'],['?','..--..','Question mark'],['/','-..-.','Separator']].forEach(function(x){
+    var tr=document.createElement('tr');tr.innerHTML='<td><span class="rch">'+x[0]+'</span></td><td>'+refM(x[1])+'</td><td><span class="rmut">'+x[2]+'</span></td>';
+    document.getElementById('rPunct').appendChild(tr);
+  });
+  [['AR','.-.-.',  'End of message'],['SK','...-.-','End of contact'],['BT','-...-','Break / new paragraph'],['KN','-.--.','Go ahead specific'],['AS','.-...','Wait / stand by'],['SOS','...---...','Distress signal'],['HH','........','Error / correction']].forEach(function(x){
+    var tr=document.createElement('tr');tr.innerHTML='<td><span class="rch racc">'+x[0]+'</span></td><td>'+refM(x[1])+'</td><td><span class="rmut">'+x[2]+'</span></td>';
+    document.getElementById('rPro').appendChild(tr);
+  });
+  [['QRN','Atmospheric noise'],['QRM','Man-made interference'],['QRO','Increase power'],['QRP','Decrease power'],['QRS','Send slower'],['QRT','Stop transmitting'],['QRZ','Who is calling me?'],['QSB','Signal fading'],['QSL','Confirm receipt'],['QSO','Two-way contact'],['QTH','My location'],['QSY','Change frequency']].forEach(function(x){
+    var tr=document.createElement('tr');tr.innerHTML='<td><span class="rch racc">'+x[0]+'</span></td><td><span class="rmut">'+x[1]+'</span></td>';
+    document.getElementById('rQ').appendChild(tr);
+  });
+  [['73','Best regards'],['88','Love and kisses'],['CQ','Calling any station'],['DE','From (separates callsign)'],['K','Go ahead'],['R','Roger'],['PSE','Please'],['TNX','Thanks'],['UR','Your'],['RST','Signal report (readability/strength/tone)'],['FB','Excellent!'],['WX','Weather'],['OM','Male operator'],['YL','Female operator'],['DX','Long distance / rare'],['HI','Laughter']].forEach(function(x){
+    var tr=document.createElement('tr');tr.innerHTML='<td><span class="rch racc">'+x[0]+'</span></td><td><span class="rmut">'+x[1]+'</span></td>';
+    document.getElementById('rAbbr').appendChild(tr);
+  });
+}
+
+/* ════════════════════════ TAB SWITCHING ════════════════════════ */
+function switchTab(t){
+  activeTab=t;
+  document.querySelectorAll('.tab').forEach(function(el){el.classList.toggle('ON',el.dataset.t===t);});
+  document.querySelectorAll('.panel').forEach(function(el){el.classList.toggle('ON',el.id===t);});
+  if(t==='receive')buildRcv();
+  if(t==='send'&&!sndChar)buildSnd();
+}
+
+/* ════════════════════════ SOS ════════════════════════ */
+function startSOS(){
+  switchTab('receive');
+  if(apTimer){clearTimeout(apTimer);apTimer=null;}
+  curItem='SOS';curMorse='...---...';answered=false;
+  var mb=document.getElementById('mbox');if(mb)setMorse(mb,'...---...');
+  var fb=document.getElementById('rfb');if(fb)fb.innerHTML='<div class="fb fb-er">SOS &nbsp;=&nbsp; &#9679;&#9679;&#9679; &nbsp; &#8212;&#8212;&#8212; &nbsp; &#9679;&#9679;&#9679; &nbsp;&mdash;&nbsp; MEMORIZE THIS</div>';
+  var row=document.getElementById('ansRow');if(row)row.innerHTML='';
+  var cd=document.getElementById('cdown');if(cd)cd.textContent='';
+  playCode('...---...',8,false,true,null);
+}
+
+/* ════════════════════════ KEYBOARD ════════════════════════ */
+document.addEventListener('keydown',function(e){
+  if(e.target&&e.target.matches('input'))return;
+  if(activeTab==='receive'){
+    if(e.key==='r'||e.key==='R'){e.preventDefault();replayMorse();return;}
+    /* if waiting on GOT IT confirmation, Enter/Space triggers it */
+    var gib=document.getElementById('gotItBtn');
+    if(gib&&(e.key==='Enter'||e.code==='Space')){e.preventDefault();buildRcv();return;}
+    if(!answered&&rLv<3){
+      var k=e.key.toUpperCase();
+      if(curChoices.indexOf(k)>=0){
+        e.preventDefault();
+        var b=document.querySelector('#ansRow .abtn[data-v="'+k+'"]');
+        if(b&&!b.disabled)checkRcv(k,b);
+      }
+    }
+  }
+  if(activeTab==='send'){
+    /* if waiting on GOT IT confirmation, Enter triggers it */
+    var sgib=document.getElementById('sGotItBtn');
+    if(sgib&&e.key==='Enter'){e.preventDefault();buildSnd();return;}
+    if(e.code==='Space'&&!pressed){e.preventDefault();pressStart();}
+    /* Enter = submit immediately (don't wait 2s) */
+    if(e.key==='Enter'&&!pressed){e.preventDefault();checkSnd();}
+  }
+  if(activeTab==='learn'&&selItem){
+    if(e.key==='ArrowRight')navDet(1);
+    if(e.key==='ArrowLeft')navDet(-1);
+  }
+});
+document.addEventListener('keyup',function(e){
+  if(activeTab==='send'&&e.code==='Space'){e.preventDefault();pressEnd();}
+});
+
+/* ════════════════════════ SEND PAD ════════════════════════ */
+function setupPad(){
+  var pad=document.getElementById('sendPad');if(!pad)return;
+  pad.addEventListener('mousedown',function(e){e.preventDefault();pressStart(e);});
+  pad.addEventListener('mouseup',function(e){e.preventDefault();pressEnd(e);});
+  pad.addEventListener('mouseleave',function(){if(pressed)pressEnd();});
+  pad.addEventListener('touchstart',function(e){pressStart(e);},passiveOpts(false));
+  pad.addEventListener('touchend',function(e){pressEnd(e);},passiveOpts(false));
+  pad.addEventListener('touchcancel',function(){if(pressed)pressEnd();});
+}
+
+/* ════════════════════════ PERSIST ════════════════════════ */
+function saveProg(){
+  try{localStorage.setItem('morse9',JSON.stringify({rScore:rScore,rStreak:rStreak,rLv:rLv,sScore:sScore,sStreak:sStreak,sLv:sLv,rCorrect:rCorrect,rTotal:rTotal,sCorrect:sCorrect,sTotal:sTotal}));}catch(e){}
+}
+function loadProg(){
+  try{
+    var d=JSON.parse(localStorage.getItem('morse9')||'{}');
+    if(d.rScore!=null)rScore=d.rScore;if(d.rStreak!=null)rStreak=d.rStreak;
+    if(d.rLv!=null)rLv=d.rLv;if(d.sScore!=null)sScore=d.sScore;
+    if(d.sStreak!=null)sStreak=d.sStreak;if(d.sLv!=null)sLv=d.sLv;
+    if(d.rCorrect!=null)rCorrect=d.rCorrect;if(d.rTotal!=null)rTotal=d.rTotal;
+    if(d.sCorrect!=null)sCorrect=d.sCorrect;if(d.sTotal!=null)sTotal=d.sTotal;
+    updRcvStats();
+    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
+    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
+    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
+    document.querySelectorAll('#rLvlBar .lv').forEach(function(el,i){el.classList.toggle('ON',i===rLv);});
+    document.querySelectorAll('#sLvlBar .lv').forEach(function(el,i){el.classList.toggle('ON',i===sLv);});
+  }catch(e){}
+}
+
+/* ════════════════════════ THEME ════════════════════════ */
+function toggleTheme(){
+  dark=!dark;
+  document.body.className=dark?'':'LT';
+  var btn=document.getElementById('themeBtn');if(btn)btn.textContent=dark?'LIGHT':'DARK';
+}
+
+/* ════════════════════════ BOOT ════════════════════════ */
+/* Feature-detect passive event listener support */
+var PASSIVE_SUPPORTED=false;
+try{var _opts=Object.defineProperty({},'passive',{get:function(){PASSIVE_SUPPORTED=true;}});window.addEventListener('test',null,_opts);window.removeEventListener('test',null,_opts);}catch(e){}
+function passiveOpts(val){return PASSIVE_SUPPORTED?{passive:val}:false;}
+
+/* _booted guard prevents double-init if user taps twice */
+var _booted=false;
+function boot(){
+  if(_booted)return;_booted=true;
+  unlockAudio();
+  document.getElementById('SP').style.display='none';
+  var ap=document.getElementById('AP');ap.style.display='flex';
+
+  /* tabs */
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('touchend',function(e){e.preventDefault();switchTab(tab.dataset.t);},passiveOpts(false));
+    tab.onclick=function(){switchTab(tab.dataset.t);};
+  });
+
+  /* receive level buttons */
+  document.querySelectorAll('#rLvlBar .lv').forEach(function(el,i){
+    el.addEventListener('touchend',function(e){e.preventDefault();rLv=i;document.querySelectorAll('#rLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildRcv();},passiveOpts(false));
+    el.onclick=function(){rLv=i;document.querySelectorAll('#rLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildRcv();};
+  });
+
+  /* send level buttons */
+  document.querySelectorAll('#sLvlBar .lv').forEach(function(el,i){
+    el.addEventListener('touchend',function(e){e.preventDefault();sLv=i;document.querySelectorAll('#sLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildSnd();},passiveOpts(false));
+    el.onclick=function(){sLv=i;document.querySelectorAll('#sLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildSnd();};
+  });
+
+  /* header + control buttons */
+  function bindBtn(id,fn){var b=document.getElementById(id);if(!b)return;b.addEventListener('touchend',function(e){e.preventDefault();fn();},passiveOpts(false));b.onclick=fn;}
+  bindBtn('sosBtn',startSOS);
+  bindBtn('refSOS',startSOS);
+  bindBtn('themeBtn',toggleTheme);
+  bindBtn('replayBtn',replayMorse);
+  bindBtn('clearBtn',clearSnd);
+  bindBtn('skipBtn',buildSnd);
+
+  /* wpm slider */
+  var ws=document.getElementById('wpmSlide');
+  if(ws)ws.addEventListener('input',function(){
+    wpm=parseInt(this.value);
+    var l=document.getElementById('wpmLbl');if(l)l.textContent=wpm;
+    var r=document.getElementById('RW');if(r)r.textContent=wpm;
+  });
+
+  setupPad();
+  loadProg();
+  buildRef();
+  buildCats();
+  buildGrid();
+}
+</script>
+</body>
+</html>
