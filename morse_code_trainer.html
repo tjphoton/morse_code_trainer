@@ -477,21 +477,7 @@ function initAudio(){
 function resumeAudio(){if(audioCtx&&audioCtx.state==='suspended')return audioCtx.resume();return Promise.resolve();}
 function unlockAudio(){
   initAudio();
-  if(!audioCtx)return;
-  /* iOS: Play a silent HTML5 audio to force iOS out of silent mode (ringer switch bypass),
-     then standard oscillator unlock. */
-  try{
-    var silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
-    silentAudio.play().catch(function(){});
-    var o = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    g.gain.value = 0;
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.start(0);
-    o.stop(audioCtx.currentTime + 0.1);
-  }catch(e){}
-  if(audioCtx.state==='suspended')audioCtx.resume();
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
 }
 function beep(start,dur,freq){
   if(!audioCtx)return;resumeAudio();freq=freq||700;
@@ -510,12 +496,12 @@ function beep(start,dur,freq){
 function note(freq,dur){
   if(!audioCtx)return;resumeAudio();
   try{
-    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;
     o.connect(g);g.connect(audioCtx.destination);
-    o.frequency.value=freq;o.type='sine';
-    g.gain.setValueAtTime(0.3,audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
-    o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+dur+0.02);
+    o.type='sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0.3,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.start(t);o.stop(t+dur+0.02);
   }catch(e){}
 }
 
@@ -568,10 +554,7 @@ function playCode(code,w,farn,flash,done){
       setTimeout(function(){if(pi)pi.className='playing';if(done)done();},td.total+200);
     }
   };
-  /* iOS: schedule audio synchronously when ctx is running (stays inside gesture window);
-     only defer via Promise when a resume is actually needed */
-  if(!audioCtx||audioCtx.state==='running'){go();}
-  else{audioCtx.resume().then(go);}
+  if(!audioCtx||audioCtx.state==='running'){go();}else{audioCtx.resume().then(go);}
 }
 
 /* ════════════════════════ RENDER MORSE ════════════════════════ */
@@ -601,8 +584,7 @@ function makeChoices(correct,lv){
   var pool;
   if(lv<2) pool=Object.keys(MC).filter(function(k){return k.length===1&&isNaN(k);});
   else if(lv===2) pool='0123456789'.split('');
-  else if(lv>=3) pool=LEVELS[Math.min(lv,4)].items;
-  else pool=Object.keys(MC).filter(function(k){return k.length===1;});
+  else pool=LEVELS[Math.min(lv,4)].items;
   var arr=[correct],rest=pool.filter(function(x){return x!==correct;});
   while(arr.length<4&&rest.length>0)arr.push(rest.splice(Math.floor(Math.random()*rest.length),1)[0]);
   return arr.sort(function(){return Math.random()-.5;});
@@ -634,16 +616,14 @@ function buildRcv(){
   if(rLv<3){
     var ch=makeChoices(item,rLv);
     curChoices=ch;
-    for(var ci=0;ci<ch.length;ci++){
-      (function(val){
-        var b=document.createElement('button');
-        b.className='abtn';b.dataset.v=val;
-        b.innerHTML=val+'<span class="kh">'+val+'</span>';
-        b.addEventListener('touchend',function(e){e.preventDefault();if(!b.disabled)checkRcv(val,b);},passiveOpts(false));
-        b.onclick=function(){if(!b.disabled)checkRcv(val,b);};
-        row.appendChild(b);
-      })(ch[ci]);
-    }
+    ch.forEach(function(val){
+      var b=document.createElement('button');
+      b.className='abtn';b.dataset.v=val;
+      b.innerHTML=val+'<span class="kh">'+val+'</span>';
+      b.addEventListener('touchend',function(e){e.preventDefault();if(!b.disabled)checkRcv(val,b);},passiveOpts(false));
+      b.onclick=function(){if(!b.disabled)checkRcv(val,b);};
+      row.appendChild(b);
+    });
   }else{
     curChoices=[];
     var wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:10px;width:100%;margin-top:4px';
@@ -717,6 +697,11 @@ function updRcvStats(){
   var k=document.getElementById('RK');if(k)k.textContent=rStreak;
   var a=document.getElementById('RA');if(a)a.textContent=rTotal?Math.round(rCorrect/rTotal*100)+'%':'--';
 }
+function updSndStats(){
+  var s=document.getElementById('SS');if(s)s.textContent=sScore;
+  var k=document.getElementById('SK');if(k)k.textContent=sStreak;
+  var a=document.getElementById('SA');if(a)a.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
+}
 function replayMorse(){
   if(!curMorse)return;
   var farn=document.getElementById('farnBtn').checked;
@@ -755,21 +740,16 @@ function checkSnd(){
     sScore+=10;sStreak++;sCorrect++;
     if(fb)fb.innerHTML='<div class="fb fb-ok">CORRECT!</div>';
     note(820,.09);setTimeout(function(){note(1040,.09);},110);
-    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
-    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
-    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
-    saveProg();setTimeout(buildSnd,1400);
+    setTimeout(buildSnd,1400);
   }else{
     sStreak=0;
-    var expected2=MC[sndChar]||w2m(sndChar);
     if(fb){
       fb.innerHTML=
         '<div class="fb fb-er" style="margin-bottom:12px">WRONG &mdash; You sent: <strong>'+sndMorse.trim()+'</strong><br>'+
         'Correct pattern for <strong>'+sndChar+'</strong>:</div>'+
         '<div id="sCorrectPat" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:18px;background:var(--bg3);border-radius:12px;margin-bottom:14px;min-height:56px"></div>'+
         '<button class="btn PRI WID" id="sGotItBtn" style="width:100%;font-size:18px;padding:18px">GOT IT &mdash; NEXT</button>';
-      var sp=document.getElementById('sCorrectPat');
-      if(sp)setMorse(sp,expected2);
+      var sp=document.getElementById('sCorrectPat');if(sp)setMorse(sp,expected);
       var sgib=document.getElementById('sGotItBtn');
       if(sgib){
         sgib.addEventListener('touchend',function(e){e.preventDefault();buildSnd();},passiveOpts(false));
@@ -779,11 +759,8 @@ function checkSnd(){
     note(200,.35);
     var pad=document.getElementById('sendPad');if(pad)pad.style.pointerEvents='none';
     var clr=document.getElementById('clearBtn');if(clr)clr.disabled=true;
-    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
-    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
-    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
-    saveProg();
   }
+  updSndStats();saveProg();
 }
 function pressStart(e){
   if(e&&e.cancelable)e.preventDefault();
@@ -846,29 +823,27 @@ function buildCats(){
     var b=document.createElement('div');
     b.className='catbtn'+(c===tCat?' ON':'');
     b.textContent=CLBL[c];
-    b.addEventListener('touchend',function(e){e.preventDefault();tCat=c;buildCats();buildGrid();hideDetail();},passiveOpts(false));
-    b.onclick=function(){tCat=c;buildCats();buildGrid();hideDetail();};
+    b.addEventListener('touchend',function(e){e.preventDefault();tCat=c;buildCats();buildGrid();hideDet();},passiveOpts(false));
+    b.onclick=function(){tCat=c;buildCats();buildGrid();hideDet();};
     el.appendChild(b);
   });
 }
 function buildGrid(){
   var g=document.getElementById('tGrid');if(!g)return;g.innerHTML='';
   var items=TD[tCat];
-  for(var idx=0;idx<items.length;idx++){
-    (function(item,i){
-      var d=document.createElement('div');
-      d.className='tcard'+(selItem&&selItem.c===item.c?' SEL':'');
-      var cDiv=document.createElement('div');cDiv.className='tch';cDiv.textContent=item.c;
-      var mDiv=document.createElement('div');
-      if(item.m){mDiv.className='tmorse';mDiv.appendChild(mkMorseNodes(item.m));}
-      else{mDiv.className='tnm';mDiv.textContent='written code';}
-      var pDiv=document.createElement('div');pDiv.className='tph';pDiv.textContent=item.p||item.c;
-      d.appendChild(cDiv);d.appendChild(mDiv);d.appendChild(pDiv);
-      d.addEventListener('touchend',function(e){e.preventDefault();showDetail(item,i);},passiveOpts(false));
-      d.onclick=function(){showDetail(item,i);};
-      g.appendChild(d);
-    })(items[idx],idx);
-  }
+  items.forEach(function(item,i){
+    var d=document.createElement('div');
+    d.className='tcard'+(selItem&&selItem.c===item.c?' SEL':'');
+    var cDiv=document.createElement('div');cDiv.className='tch';cDiv.textContent=item.c;
+    var mDiv=document.createElement('div');
+    if(item.m){mDiv.className='tmorse';mDiv.appendChild(mkMorseNodes(item.m));}
+    else{mDiv.className='tnm';mDiv.textContent='written code';}
+    var pDiv=document.createElement('div');pDiv.className='tph';pDiv.textContent=item.p||item.c;
+    d.appendChild(cDiv);d.appendChild(mDiv);d.appendChild(pDiv);
+    d.addEventListener('touchend',function(e){e.preventDefault();showDetail(item,i);},passiveOpts(false));
+    d.onclick=function(){showDetail(item,i);};
+    g.appendChild(d);
+  });
 }
 function showDetail(item,idx){
   /* iOS-safe object copy — Object.assign not available on old Safari */
@@ -1022,10 +997,7 @@ function loadProg(){
     if(d.sStreak!=null)sStreak=d.sStreak;if(d.sLv!=null)sLv=d.sLv;
     if(d.rCorrect!=null)rCorrect=d.rCorrect;if(d.rTotal!=null)rTotal=d.rTotal;
     if(d.sCorrect!=null)sCorrect=d.sCorrect;if(d.sTotal!=null)sTotal=d.sTotal;
-    updRcvStats();
-    var ss=document.getElementById('SS');if(ss)ss.textContent=sScore;
-    var sk=document.getElementById('SK');if(sk)sk.textContent=sStreak;
-    var sa=document.getElementById('SA');if(sa)sa.textContent=sTotal?Math.round(sCorrect/sTotal*100)+'%':'--';
+    updRcvStats();updSndStats();
     document.querySelectorAll('#rLvlBar .lv').forEach(function(el,i){el.classList.toggle('ON',i===rLv);});
     document.querySelectorAll('#sLvlBar .lv').forEach(function(el,i){el.classList.toggle('ON',i===sLv);});
   }catch(e){}
@@ -1043,6 +1015,13 @@ function toggleTheme(){
 var PASSIVE_SUPPORTED=false;
 try{var _opts=Object.defineProperty({},'passive',{get:function(){PASSIVE_SUPPORTED=true;}});window.addEventListener('test',null,_opts);window.removeEventListener('test',null,_opts);}catch(e){}
 function passiveOpts(val){return PASSIVE_SUPPORTED?{passive:val}:false;}
+function bindLvl(sel,setLv,rebuild){
+  document.querySelectorAll(sel+' .lv').forEach(function(el,i){
+    var fn=function(){setLv(i);document.querySelectorAll(sel+' .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});rebuild();};
+    el.addEventListener('touchend',function(e){e.preventDefault();fn();},passiveOpts(false));
+    el.onclick=fn;
+  });
+}
 
 /* _booted guard prevents double-init if user taps twice */
 var _booted=false;
@@ -1058,17 +1037,8 @@ function boot(){
     tab.onclick=function(){switchTab(tab.dataset.t);};
   });
 
-  /* receive level buttons */
-  document.querySelectorAll('#rLvlBar .lv').forEach(function(el,i){
-    el.addEventListener('touchend',function(e){e.preventDefault();rLv=i;document.querySelectorAll('#rLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildRcv();},passiveOpts(false));
-    el.onclick=function(){rLv=i;document.querySelectorAll('#rLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildRcv();};
-  });
-
-  /* send level buttons */
-  document.querySelectorAll('#sLvlBar .lv').forEach(function(el,i){
-    el.addEventListener('touchend',function(e){e.preventDefault();sLv=i;document.querySelectorAll('#sLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildSnd();},passiveOpts(false));
-    el.onclick=function(){sLv=i;document.querySelectorAll('#sLvlBar .lv').forEach(function(x,j){x.classList.toggle('ON',j===i);});buildSnd();};
-  });
+  bindLvl('#rLvlBar',function(i){rLv=i;},buildRcv);
+  bindLvl('#sLvlBar',function(i){sLv=i;},buildSnd);
 
   /* header + control buttons */
   function bindBtn(id,fn){var b=document.getElementById(id);if(!b)return;b.addEventListener('touchend',function(e){e.preventDefault();fn();},passiveOpts(false));b.onclick=fn;}
@@ -1095,7 +1065,7 @@ function boot(){
   /* iOS suspends AudioContext between interactions — resume on any touch */
   document.addEventListener('touchstart',function(){
     if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
-  },{capture:true});
+  },{passive:true,capture:true});
 }
 </script>
 </body>
